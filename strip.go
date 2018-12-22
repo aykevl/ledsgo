@@ -1,7 +1,11 @@
 package ledsgo
 
+import (
+	"image/color"
+)
+
 // The LEDs of a LED strip. Colors are represented in RGB form: 0x00rrggbb.
-type Strip []uint32
+type Strip []color.RGBA
 
 // Fill the LED strip with a color range, using the HSV spectrum conversion.
 // The start color is the color for the first LED. All other colors have the
@@ -14,7 +18,7 @@ func (s Strip) FillSpectrum(start Color, hueinc uint16) {
 }
 
 // FillSolid sets all colors to the given value.
-func (s Strip) FillSolid(color uint32) {
+func (s Strip) FillSolid(color color.RGBA) {
 	for i := range s {
 		s[i] = color
 	}
