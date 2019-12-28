@@ -230,12 +230,12 @@ func Noise3(x, y, z int32) int16 {
 	k := (z>>1 + s>>1) >> 11                                  // .0
 
 	t := ((int64(i) + int64(j) + int64(k)) * G3) // .32
-	X0 := (int64(i)<<32 - t)                     // .32: Unskew the cell origin back to (x,y) space
-	Y0 := (int64(j)<<32 - t)                     // .32
-	Z0 := (int64(k)<<32 - t)                     // .32
-	x0 := (int64(x)<<20 - X0)                    // .32: The x,y distances from the cell origin
-	y0 := (int64(y)<<20 - Y0)                    // .32
-	z0 := (int64(z)<<20 - Z0)                    // .32
+	X0 := int64(i)<<32 - t                       // .32: Unskew the cell origin back to (x,y) space
+	Y0 := int64(j)<<32 - t                       // .32
+	Z0 := int64(k)<<32 - t                       // .32
+	x0 := int32(int64(x)<<2 - X0>>18)            // .14: The x,y distances from the cell origin
+	y0 := int32(int64(y)<<2 - Y0>>18)            // .14
+	z0 := int32(int64(z)<<2 - Z0>>18)            // .14
 
 	// For the 3D case, the simplex shape is a slightly irregular tetrahedron.
 	// Determine which simplex we are in.
@@ -296,50 +296,50 @@ func Noise3(x, y, z int32) int16 {
 	// a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
 	// c = 1/6.
 
-	x1 := x0 - int64(i1)<<32 + G3   // .32: Offsets for second corner in (x,y,z) coords
-	y1 := y0 - int64(j1)<<32 + G3   // .32
-	z1 := z0 - int64(k1)<<32 + G3   // .32
-	x2 := x0 - int64(i2)<<32 + 2*G3 // .32: Offsets for third corner in (x,y,z) coords
-	y2 := y0 - int64(j2)<<32 + 2*G3 // .32
-	z2 := z0 - int64(k2)<<32 + 2*G3 // .32
-	x3 := x0 - (1 << 32) + 3*G3     // .32: Offsets for last corner in (x,y,z) coords
-	y3 := y0 - (1 << 32) + 3*G3     // .32
-	z3 := z0 - (1 << 32) + 3*G3     // .32
+	x1 := x0 - i1<<14 + G3>>18      // .14: Offsets for second corner in (x,y,z) coords
+	y1 := y0 - j1<<14 + G3>>18      // .14
+	z1 := z0 - k1<<14 + G3>>18      // .14
+	x2 := x0 - i2<<14 + 2*G3>>18    // .14: Offsets for third corner in (x,y,z) coords
+	y2 := y0 - j2<<14 + 2*G3>>18    // .14
+	z2 := z0 - k2<<14 + 2*G3>>18    // .14
+	x3 := x0 - (1 << 14) + 3*G3>>18 // .14: Offsets for last corner in (x,y,z) coords
+	y3 := y0 - (1 << 14) + 3*G3>>18 // .14
+	z3 := z0 - (1 << 14) + 3*G3>>18 // .14
 
 	// Calculate the contribution from the four corners
-	var n0, n1, n2, n3 int32  // .30
-	const fix0_6 = 2576980378 // .32: 0.6
+	var n0, n1, n2, n3 int32 // .30
+	const fix0_6 = 39322     // .16: 0.6
 
-	t0 := int32((fix0_6 - (x0>>16)*(x0>>16) - (y0>>16)*(y0>>16) - (z0>>16)*(z0>>16)) >> 16) // .16
+	t0 := fix0_6 - (x0*x0+y0*y0+z0*z0)>>12 // .16
 	if t0 > 0 {
 		t0 = (t0 * t0) >> 16 // .16
 		t0 = (t0 * t0) >> 16 // .16
-		// .15 * .15 = .30
-		n0 = int32(((t0 >> 1) * grad3(perm[(i+int32(perm[(j+int32(perm[k&0xff]))&0xff]))&0xff], int32(x0>>17), int32(y0>>17), int32(z0>>17))))
+		// .16 * .14 = .30
+		n0 = t0 * grad3(perm[(i+int32(perm[(j+int32(perm[k&0xff]))&0xff]))&0xff], x0, y0, z0)
 	}
 
-	t1 := int32((fix0_6 - (x1>>16)*(x1>>16) - (y1>>16)*(y1>>16) - (z1>>16)*(z1>>16)) >> 16) // .16
+	t1 := fix0_6 - (x1*x1+y1*y1+z1*z1)>>12 // .16
 	if t1 > 0 {
 		t1 = (t1 * t1) >> 16 // .16
 		t1 = (t1 * t1) >> 16 // .16
-		// .15 * .15 = .30
-		n1 = int32(((t1 >> 1) * grad3(perm[(i+i1+int32(perm[(j+j1+int32(perm[(k+k1)&0xff]))&0xff]))&0xff], int32(x1>>17), int32(y1>>17), int32(z1>>17))))
+		// .16 * .14 = .30
+		n1 = t1 * grad3(perm[(i+i1+int32(perm[(j+j1+int32(perm[(k+k1)&0xff]))&0xff]))&0xff], x1, y1, z1)
 	}
 
-	t2 := int32((fix0_6 - (x2>>16)*(x2>>16) - (y2>>16)*(y2>>16) - (z2>>16)*(z2>>16)) >> 16) // .16
+	t2 := fix0_6 - (x2*x2+y2*y2+z2*z2)>>12 // .16
 	if t2 > 0 {
 		t2 = (t2 * t2) >> 16 // .16
 		t2 = (t2 * t2) >> 16 // .16
-		// .15 * .15 = .30
-		n2 = int32((t2 >> 1) * grad3(perm[(i+i2+int32(perm[(j+j2+int32(perm[(k+k2)&0xff]))&0xff]))&0xff], int32(x2>>17), int32(y2>>17), int32(z2>>17)))
+		// .16 * .14 = .30
+		n2 = t2 * grad3(perm[(i+i2+int32(perm[(j+j2+int32(perm[(k+k2)&0xff]))&0xff]))&0xff], x2, y2, z2)
 	}
 
-	t3 := int32((fix0_6 - (x3>>16)*(x3>>16) - (y3>>16)*(y3>>16) - (z3>>16)*(z3>>16)) >> 16) // .16
+	t3 := fix0_6 - (x3*x3+y3*y3+z3*z3)>>12 // .16
 	if t3 > 0 {
 		t3 = (t3 * t3) >> 16 // .16
 		t3 = (t3 * t3) >> 16 // .16
-		// .15 * .15 = .30
-		n3 = int32((t3 >> 1) * grad3(perm[(i+1+int32(perm[(j+1+int32(perm[(k+1)&0xff]))&0xff]))&0xff], int32(x3>>17), int32(y3>>17), int32(z3>>17)))
+		// .16 * .14 = .30
+		n3 = t3 * grad3(perm[(i+1+int32(perm[(j+1+int32(perm[(k+1)&0xff]))&0xff]))&0xff], x3, y3, z3)
 	}
 
 	// Add contributions from each corner to get the final noise value.
