@@ -360,21 +360,21 @@ func Noise4(x, y, z, w int32) int16 {
 
 	// Skew the (x,y,z,w) space to determine which cell of 24 simplices we're
 	// in.
-	s := int32(((int64(x) + int64(y) + int64(z) + int64(w)) * F4) >> (32 - 0)) // .12 + .30 = .10: Factor for 4D skewing.
-	i := (x>>2 + s) >> 10                                                      // .0
-	j := (y>>2 + s) >> 10                                                      // .0
-	k := (z>>2 + s) >> 10                                                      // .0
-	l := (w>>2 + s) >> 10                                                      // .0
+	s := int32(((int64(x) + int64(y) + int64(z) + int64(w)) * F4) >> 32) // .12 + .30 = .10: Factor for 4D skewing.
+	i := (x>>2 + s) >> 10                                                // .0
+	j := (y>>2 + s) >> 10                                                // .0
+	k := (z>>2 + s) >> 10                                                // .0
+	l := (w>>2 + s) >> 10                                                // .0
 
-	t := (int64(i) + int64(j) + int64(k) + int64(l)) * G4 // .32
-	X0 := int64(i)<<32 - t                                // .32: Unskew the cell origin back to (x,y,z,w) space
-	Y0 := int64(j)<<32 - t                                // .32
-	Z0 := int64(k)<<32 - t                                // .32
-	W0 := int64(l)<<32 - t                                // .32
-	x0 := int64(x)<<20 - X0                               // .32: The x,y,z,w distances from the cell origin
-	y0 := int64(y)<<20 - Y0                               // .32
-	z0 := int64(z)<<20 - Z0                               // .32
-	w0 := int64(w)<<20 - W0                               // .32
+	t := ((int64(i) + int64(j) + int64(k) + int64(l)) * G4) >> 18 // .14
+	X0 := int64(i)<<14 - t                                        // .14: Unskew the cell origin back to (x,y,z,w) space
+	Y0 := int64(j)<<14 - t                                        // .14
+	Z0 := int64(k)<<14 - t                                        // .14
+	W0 := int64(l)<<14 - t                                        // .14
+	x0 := int32(int64(x)<<2 - X0)                                 // .14: The x,y,z,w distances from the cell origin
+	y0 := int32(int64(y)<<2 - Y0)                                 // .14
+	z0 := int32(int64(z)<<2 - Z0)                                 // .14
+	w0 := int32(int64(w)<<2 - W0)                                 // .14
 
 	// For the 4D case, the simplex is a 4D shape I won't even try to describe.
 	// To find out which of the 24 possible simplices we're in, we need to
@@ -428,65 +428,65 @@ func Noise4(x, y, z, w int32) int16 {
 	l3 := bool2int32(simplex[c][3] >= 1)
 	// The fifth corner has all coordinate offsets = 1, so no need to look that up.
 
-	x1 := x0 - int64(i1)<<32 + G4 // Offsets for second corner in (x,y,z,w) coords
-	y1 := y0 - int64(j1)<<32 + G4
-	z1 := z0 - int64(k1)<<32 + G4
-	w1 := w0 - int64(l1)<<32 + G4
-	x2 := x0 - int64(i2)<<32 + 2*G4 // Offsets for third corner in (x,y,z,w) coords
-	y2 := y0 - int64(j2)<<32 + 2*G4
-	z2 := z0 - int64(k2)<<32 + 2*G4
-	w2 := w0 - int64(l2)<<32 + 2*G4
-	x3 := x0 - int64(i3)<<32 + 3*G4 // Offsets for fourth corner in (x,y,z,w) coords
-	y3 := y0 - int64(j3)<<32 + 3*G4
-	z3 := z0 - int64(k3)<<32 + 3*G4
-	w3 := w0 - int64(l3)<<32 + 3*G4
-	x4 := x0 - (1 << 32) + 4*G4 // Offsets for last corner in (x,y,z,w) coords
-	y4 := y0 - (1 << 32) + 4*G4
-	z4 := z0 - (1 << 32) + 4*G4
-	w4 := w0 - (1 << 32) + 4*G4
+	x1 := x0 - int32(i1)<<14 + G4>>18 // .14: Offsets for second corner in (x,y,z,w) coords
+	y1 := y0 - int32(j1)<<14 + G4>>18
+	z1 := z0 - int32(k1)<<14 + G4>>18
+	w1 := w0 - int32(l1)<<14 + G4>>18
+	x2 := x0 - i2<<14 + 2*G4>>18 // .14: Offsets for third corner in (x,y,z,w) coords
+	y2 := y0 - j2<<14 + 2*G4>>18
+	z2 := z0 - k2<<14 + 2*G4>>18
+	w2 := w0 - l2<<14 + 2*G4>>18
+	x3 := x0 - i3<<14 + 3*G4>>18 // .14: Offsets for fourth corner in (x,y,z,w) coords
+	y3 := y0 - j3<<14 + 3*G4>>18
+	z3 := z0 - k3<<14 + 3*G4>>18
+	w3 := w0 - l3<<14 + 3*G4>>18
+	x4 := x0 - (1 << 14) + 4*G4>>18 // .14: Offsets for last corner in (x,y,z,w) coords
+	y4 := y0 - (1 << 14) + 4*G4>>18
+	z4 := z0 - (1 << 14) + 4*G4>>18
+	w4 := w0 - (1 << 14) + 4*G4>>18
 
 	var n0, n1, n2, n3, n4 int32 // Noise contributions from the five corners
-	const fix0_6 = 2576980378    // .32: 0.6
+	const fix0_6 = 39322         // .16: 0.6
 
 	// Calculate the contribution from the five corners
-	t0 := int32((fix0_6 - (x0>>16)*(x0>>16) - (y0>>16)*(y0>>16) - (z0>>16)*(z0>>16) - (w0>>16)*(w0>>16)) >> 16) // .16
+	t0 := fix0_6 - int32((x0*x0+y0*y0+z0*z0+w0*w0)>>12) // .16
 	if t0 > 0 {
 		t0 = (t0 * t0) >> 16
 		t0 = (t0 * t0) >> 16
-		// .15 * .15 = .30
-		n0 = int32(t0>>1) * grad4(perm[(i+int32(perm[(j+int32(perm[(k+int32(perm[l&0xff]))&0xff]))&0xff]))&0xff], int32(x0>>17), int32(y0>>17), int32(z0>>17), int32(w0>>17))
+		// .16 * .14 = .30
+		n0 = t0 * grad4(perm[(i+int32(perm[(j+int32(perm[(k+int32(perm[l&0xff]))&0xff]))&0xff]))&0xff], x0, y0, z0, w0)
 	}
 
-	t1 := int32((fix0_6 - (x1>>16)*(x1>>16) - (y1>>16)*(y1>>16) - (z1>>16)*(z1>>16) - (w1>>16)*(w1>>16)) >> 16) // .16
+	t1 := fix0_6 - (x1*x1+y1*y1+z1*z1+w1*w1)>>12 // .16
 	if t1 > 0 {
 		t1 = (t1 * t1) >> 16
 		t1 = (t1 * t1) >> 16
-		// .15 * .15 = .30
-		n1 = int32(t1>>1) * grad4(perm[(i+i1+int32(perm[(j+j1+int32(perm[(k+k1+int32(perm[(l+l1)&0xff]))&0xff]))&0xff]))&0xff], int32(x1>>17), int32(y1>>17), int32(z1>>17), int32(w1>>17))
+		// .16 * .14 = .30
+		n1 = t1 * grad4(perm[(i+i1+int32(perm[(j+j1+int32(perm[(k+k1+int32(perm[(l+l1)&0xff]))&0xff]))&0xff]))&0xff], x1, y1, z1, w1)
 	}
 
-	t2 := int32((fix0_6 - (x2>>16)*(x2>>16) - (y2>>16)*(y2>>16) - (z2>>16)*(z2>>16) - (w2>>16)*(w2>>16)) >> 16) // .16
+	t2 := fix0_6 - (x2*x2+y2*y2+z2*z2+w2*w2)>>12 // .16
 	if t2 > 0 {
 		t2 = (t2 * t2) >> 16
 		t2 = (t2 * t2) >> 16
-		// .15 * .15 = .30
-		n2 = int32(t2>>1) * grad4(perm[(i+i2+int32(perm[(j+j2+int32(perm[(k+k2+int32(perm[(l+l2)&0xff]))&0xff]))&0xff]))&0xff], int32(x2>>17), int32(y2>>17), int32(z2>>17), int32(w2>>17))
+		// .16 * .14 = .30
+		n2 = t2 * grad4(perm[(i+i2+int32(perm[(j+j2+int32(perm[(k+k2+int32(perm[(l+l2)&0xff]))&0xff]))&0xff]))&0xff], x2, y2, z2, w2)
 	}
 
-	t3 := int32((fix0_6 - (x3>>16)*(x3>>16) - (y3>>16)*(y3>>16) - (z3>>16)*(z3>>16) - (w3>>16)*(w3>>16)) >> 16) // .16
+	t3 := fix0_6 - (x3*x3+y3*y3+z3*z3+w3*w3)>>12 // .16
 	if t3 > 0 {
 		t3 = (t3 * t3) >> 16
 		t3 = (t3 * t3) >> 16
-		// .15 * .15 = .30
-		n3 = int32(t3>>1) * grad4(perm[(i+i3+int32(perm[(j+j3+int32(perm[(k+k3+int32(perm[(l+l3)&0xff]))&0xff]))&0xff]))&0xff], int32(x3>>17), int32(y3>>17), int32(z3>>17), int32(w3>>17))
+		// .16 * .14 = .30
+		n3 = t3 * grad4(perm[(i+i3+int32(perm[(j+j3+int32(perm[(k+k3+int32(perm[(l+l3)&0xff]))&0xff]))&0xff]))&0xff], x3, y3, z3, w3)
 	}
 
-	t4 := int32((fix0_6 - (x4>>16)*(x4>>16) - (y4>>16)*(y4>>16) - (z4>>16)*(z4>>16) - (w4>>16)*(w4>>16)) >> 16) // .16
+	t4 := fix0_6 - (x4*x4+y4*y4+z4*z4+w4*w4)>>12 // .16
 	if t4 > 0 {
 		t4 = (t4 * t4) >> 16
 		t4 = (t4 * t4) >> 16
-		// .15 * .15 = .30
-		n4 = int32(t4>>1) * grad4(perm[(i+1+int32(perm[(j+1+int32(perm[(k+1+int32(perm[(l+1)&0xff]))&0xff]))&0xff]))&0xff], int32(x4>>17), int32(y4>>17), int32(z4>>17), int32(w4>>17))
+		// .16 * .14 = .30
+		n4 = t4 * grad4(perm[(i+1+int32(perm[(j+1+int32(perm[(k+1+int32(perm[(l+1)&0xff]))&0xff]))&0xff]))&0xff], x4, y4, z4, w4)
 	}
 
 	n := n0 + n1 + n2 + n3 + n4 // .30
