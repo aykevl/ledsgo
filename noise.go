@@ -160,8 +160,8 @@ func Noise2(x, y int32) int16 {
 	t := ((int64(i) + int64(j)) * G2) // .32
 	X0 := (int64(i)<<32 - t)          // .32: Unskew the cell origin back to (x,y) space
 	Y0 := (int64(j)<<32 - t)          // .32
-	x0 := (int64(x)<<20 - X0)         // .32: The x,y distances from the cell origin
-	y0 := (int64(y)<<20 - Y0)         // .32
+	x0 := int32(int64(x)<<2 - X0>>18) // .14: The x,y distances from the cell origin
+	y0 := int32(int64(y)<<2 - Y0>>18) // .14
 
 	// For the 2D case, the simplex shape is an equilateral triangle.
 	// Determine which simplex we are in.
@@ -178,33 +178,33 @@ func Noise2(x, y int32) int16 {
 	// a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
 	// c = (3-sqrt(3))/6
 
-	x1 := x0 - int64(i1)<<32 + G2 // .32: Offsets for middle corner in (x,y) unskewed coords
-	y1 := y0 - int64(j1)<<32 + G2 // .32
-	x2 := x0 - (1 << 32) + 2*G2   // .32: Offsets for last corner in (x,y) unskewed coords
-	y2 := y0 - (1 << 32) + 2*G2   // .32
+	x1 := x0 - int32(i1)<<14 + G2>>18 // .14: Offsets for middle corner in (x,y) unskewed coords
+	y1 := y0 - int32(j1)<<14 + G2>>18 // .14
+	x2 := x0 - (1 << 14) + 2*G2>>18   // .14: Offsets for last corner in (x,y) unskewed coords
+	y2 := y0 - (1 << 14) + 2*G2>>18   // .14
 
 	var n0, n1, n2 int32 // Noise contributions from the three corners
 
 	// Calculate the contribution from the three corners
-	t0 := int32(((1 << 31) - (x0>>16)*(x0>>16) - (y0>>16)*(y0>>16)) >> 16) // .16
+	t0 := (1 << 15) - int32((x0*x0+y0*y0)>>12) // .16
 	if t0 > 0 {
-		t0 = (t0 * t0) >> 16                                                                              // .16
-		t0 = (t0 * t0) >> 16                                                                              // .16
-		n0 = int32(((t0 >> 1) * grad2(perm[(i+int32(perm[j&0xff]))&0xff], int32(x0>>17), int32(y0>>17)))) // .15 * .15 = .30
+		t0 = (t0 * t0) >> 16                                        // .16
+		t0 = (t0 * t0) >> 16                                        // .16
+		n0 = t0 * grad2(perm[(i+int32(perm[j&0xff]))&0xff], x0, y0) // .16 * .14 = .30
 	}
 
-	t1 := int32(((1 << 31) - (x1>>16)*(x1>>16) - (y1>>16)*(y1>>16)) >> 16) // .16
+	t1 := (1 << 15) - int32((x1*x1+y1*y1)>>12) // .16
 	if t1 > 0 {
-		t1 = (t1 * t1) >> 16                                                                                      // .16
-		t1 = (t1 * t1) >> 16                                                                                      // .16
-		n1 = int32(((t1 >> 1) * grad2(perm[(i+i1+int32(perm[(j+j1)&0xff]))&0xff], int32(x1>>17), int32(y1>>17)))) // .15 * .15 = .30
+		t1 = (t1 * t1) >> 16                                                // .16
+		t1 = (t1 * t1) >> 16                                                // .16
+		n1 = t1 * grad2(perm[(i+i1+int32(perm[(j+j1)&0xff]))&0xff], x1, y1) // .16 * .14 = .30
 	}
 
-	t2 := int32(((1 << 31) - (x2>>16)*(x2>>16) - (y2>>16)*(y2>>16)) >> 16) // .16
+	t2 := (1 << 15) - int32((x2*x2+y2*y2)>>12) // .16
 	if t2 > 0 {
-		t2 = (t2 * t2) >> 16                                                                                  // .16
-		t2 = (t2 * t2) >> 16                                                                                  // .16
-		n2 = int32((t2 >> 1) * grad2(perm[(i+1+int32(perm[(j+1)&0xff]))&0xff], int32(x2>>17), int32(y2>>17))) // .15 * .15 = .30
+		t2 = (t2 * t2) >> 16                                              // .16
+		t2 = (t2 * t2) >> 16                                              // .16
+		n2 = t2 * grad2(perm[(i+1+int32(perm[(j+1)&0xff]))&0xff], x2, y2) // .16 * .14 = .30
 	}
 
 	// Add contributions from each corner to get the final noise value.
