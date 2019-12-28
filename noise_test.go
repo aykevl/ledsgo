@@ -177,6 +177,69 @@ func TestNoise3(t *testing.T) {
 	}
 }
 
+func TestNoise4(t *testing.T) {
+	r := rand.NewSource(0)
+	numTestsSub := 48 // ~2s
+	numTests := numTestsSub * numTestsSub * numTestsSub * numTestsSub
+	rangemax := 0.0
+	rangemin := 0.0
+	rangesum := 0.0
+	diffsum := 0.0
+	diffmax := 0.0
+	diffmin := 0.0
+	for i := 0; i < numTestsSub; i++ { // .12
+		for j := 0; j < numTestsSub; j++ { // .12
+			for k := 0; k < numTestsSub; k++ { // .12
+				for l := 0; l < numTestsSub; l++ { // .12
+					x := int32(r.Int63())
+					y := int32(r.Int63())
+					z := int32(r.Int63())
+					w := int32(r.Int63())
+					n1 := simplexnoise.Noise4(float64(x)/0x1000, float64(y)/0x1000, float64(z)/0x1000, float64(w)/0x1000)
+					n2 := float64(Noise4(int32(x), int32(y), int32(z), int32(w))) / 0x8000
+					rangesum += n2
+					if n2 > rangemax {
+						rangemax = n2
+					}
+					if n2 < rangemin {
+						rangemin = n2
+					}
+					diff := n1 - n2
+					diffsum += math.Abs(diff)
+					if diff > diffmax {
+						diffmax = diff
+						if diffmax > 0.1 {
+							t.Logf("diffmax at x=%d; y=%d; z=%d; w=%d: %f", x, y, z, w, diffmax)
+							t.Fail()
+						}
+					}
+					if diff < diffmin {
+						diffmin = diff
+						if diffmin < -0.1 {
+							t.Logf("diffmin at x=%d; y=%d; z=%d; w=%d: %f", x, y, z, w, diffmin)
+							t.Fail()
+						}
+					}
+				}
+			}
+		}
+	}
+	rangeavg := rangesum / float64(numTests)
+	diffavg := diffsum / float64(numTests)
+	t.Logf("number of tests: %d", numTests)
+	t.Logf("range: avg %+2.6f max %+2.6f min %+2.6f", rangeavg, rangemax, rangemin)
+	t.Logf("diff:  avg %+2.6f max %+2.6f min %+2.6f", diffavg, diffmax, diffmin)
+	if diffavg >= 0.0004 {
+		t.Errorf("diff avg between float and fixed-point is too big: %f", diffavg)
+	}
+	if diffmax > 0.005 {
+		t.Errorf("diff max is too high: %f", diffmax)
+	}
+	if diffmin < -0.005 {
+		t.Errorf("diff min is too low: %f", diffmin)
+	}
+}
+
 // avoid compiler optimizations
 var (
 	resultInt16   int16
@@ -227,6 +290,22 @@ func BenchmarkNoise3Float(b *testing.B) {
 	var r float64
 	for n := 0; n < b.N; n++ {
 		r = simplexnoise.Noise3(float64(n), float64(n), float64(n))
+	}
+	resultFloat64 = r
+}
+
+func BenchmarkNoise4(b *testing.B) {
+	var r int16
+	for n := 0; n < b.N; n++ {
+		r = Noise4(int32(n), int32(n), int32(n), int32(n))
+	}
+	resultInt16 = r
+}
+
+func BenchmarkNoise4Float(b *testing.B) {
+	var r float64
+	for n := 0; n < b.N; n++ {
+		r = simplexnoise.Noise4(float64(n), float64(n), float64(n), float64(n))
 	}
 	resultFloat64 = r
 }
