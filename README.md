@@ -21,6 +21,13 @@ Be warned that Simplex noise is
 2022-01-18) so use at your own risk for computer graphics. This patent may or
 may not apply to LED animations, I don't know.
 
+## Animation demos
+
+There is a [demos](./demos) subpackage which contains a number of simple
+animations that can be directly applied to surfaces implementing the
+[`Displayer`](https://godoc.org/github.com/aykevl/ledsgo/demos#Displayer)
+interface.
+
 ## License
 
 This package is licensed under a BSD-style license, see the LICENSE file for
