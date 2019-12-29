@@ -31,6 +31,7 @@ func main() {
 	dir := os.Args[1] // destination directory
 
 	saveAnimation(demos.Fire, filepath.Join(dir, "fire.png"))
+	saveAnimation(demos.Noise, filepath.Join(dir, "noise.png"))
 }
 
 func saveAnimation(draw func(demos.Displayer, time.Time), path string) {

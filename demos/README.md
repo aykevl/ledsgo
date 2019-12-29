@@ -8,3 +8,10 @@ low (32x32) to match LED panels such as common hub75 LED panels.
 A simple fire-like animation.
 
 ![Fire](./images/fire.png)
+
+## Noise
+
+Map 3D simplex noise to an image using the noise output as the hue of the
+pixel color.
+
+![Noise](./images/noise.png)

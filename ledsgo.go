@@ -40,7 +40,7 @@ func (c Color) Spectrum() color.RGBA {
 	r = r*uint32(c.V)*(uint32(c.S))/(1<<16) + sat
 	g = g*uint32(c.V)*(uint32(c.S))/(1<<16) + sat
 	b = b*uint32(c.V)*(uint32(c.S))/(1<<16) + sat
-	return color.RGBA{uint8(r), uint8(g), uint8(b), 0}
+	return color.RGBA{uint8(r), uint8(g), uint8(b), 0xff}
 }
 
 // ApplyAlpha scales the color with the given alpha. It can be used to reduce
