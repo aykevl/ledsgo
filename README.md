@@ -30,5 +30,6 @@ interface.
 
 ## License
 
-This package is licensed under a BSD-style license, see the LICENSE file for
-details.
+This package is licensed under the MIT license, just like the FastLED library.
+See the LICENSE file for details. Some code has been copied from the FastLED
+library, this is indicated in the code.
