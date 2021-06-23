@@ -157,9 +157,9 @@ func Noise2(x, y int32) int16 {
 	i := (x>>1 + s>>1) >> 11                       // .0
 	j := (y>>1 + s>>1) >> 11                       // .0
 
-	t := ((int64(i) + int64(j)) * G2) // .32
-	X0 := (int64(i)<<32 - t)          // .32: Unskew the cell origin back to (x,y) space
-	Y0 := (int64(j)<<32 - t)          // .32
+	t := (int64(i) + int64(j)) * G2   // .32
+	X0 := int64(i)<<32 - t            // .32: Unskew the cell origin back to (x,y) space
+	Y0 := int64(j)<<32 - t            // .32
 	x0 := int32(int64(x)<<2 - X0>>18) // .14: The x,y distances from the cell origin
 	y0 := int32(int64(y)<<2 - Y0>>18) // .14
 
@@ -178,29 +178,29 @@ func Noise2(x, y int32) int16 {
 	// a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
 	// c = (3-sqrt(3))/6
 
-	x1 := x0 - int32(i1)<<14 + G2>>18 // .14: Offsets for middle corner in (x,y) unskewed coords
-	y1 := y0 - int32(j1)<<14 + G2>>18 // .14
-	x2 := x0 - (1 << 14) + 2*G2>>18   // .14: Offsets for last corner in (x,y) unskewed coords
-	y2 := y0 - (1 << 14) + 2*G2>>18   // .14
+	x1 := x0 - i1<<14 + G2>>18      // .14: Offsets for middle corner in (x,y) unskewed coords
+	y1 := y0 - j1<<14 + G2>>18      // .14
+	x2 := x0 - (1 << 14) + 2*G2>>18 // .14: Offsets for last corner in (x,y) unskewed coords
+	y2 := y0 - (1 << 14) + 2*G2>>18 // .14
 
 	var n0, n1, n2 int32 // Noise contributions from the three corners
 
 	// Calculate the contribution from the three corners
-	t0 := (1 << 15) - int32((x0*x0+y0*y0)>>12) // .16
+	t0 := (1 << 15) - ((x0*x0 + y0*y0) >> 12) // .16
 	if t0 > 0 {
 		t0 = (t0 * t0) >> 16                                        // .16
 		t0 = (t0 * t0) >> 16                                        // .16
 		n0 = t0 * grad2(perm[(i+int32(perm[j&0xff]))&0xff], x0, y0) // .16 * .14 = .30
 	}
 
-	t1 := (1 << 15) - int32((x1*x1+y1*y1)>>12) // .16
+	t1 := (1 << 15) - ((x1*x1 + y1*y1) >> 12) // .16
 	if t1 > 0 {
 		t1 = (t1 * t1) >> 16                                                // .16
 		t1 = (t1 * t1) >> 16                                                // .16
 		n1 = t1 * grad2(perm[(i+i1+int32(perm[(j+j1)&0xff]))&0xff], x1, y1) // .16 * .14 = .30
 	}
 
-	t2 := (1 << 15) - int32((x2*x2+y2*y2)>>12) // .16
+	t2 := (1 << 15) - ((x2*x2 + y2*y2) >> 12) // .16
 	if t2 > 0 {
 		t2 = (t2 * t2) >> 16                                              // .16
 		t2 = (t2 * t2) >> 16                                              // .16
@@ -229,13 +229,13 @@ func Noise3(x, y, z int32) int16 {
 	j := (y>>1 + s>>1) >> 11                                  // .0
 	k := (z>>1 + s>>1) >> 11                                  // .0
 
-	t := ((int64(i) + int64(j) + int64(k)) * G3) // .32
-	X0 := int64(i)<<32 - t                       // .32: Unskew the cell origin back to (x,y) space
-	Y0 := int64(j)<<32 - t                       // .32
-	Z0 := int64(k)<<32 - t                       // .32
-	x0 := int32(int64(x)<<2 - X0>>18)            // .14: The x,y distances from the cell origin
-	y0 := int32(int64(y)<<2 - Y0>>18)            // .14
-	z0 := int32(int64(z)<<2 - Z0>>18)            // .14
+	t := (int64(i) + int64(j) + int64(k)) * G3 // .32
+	X0 := int64(i)<<32 - t                     // .32: Unskew the cell origin back to (x,y) space
+	Y0 := int64(j)<<32 - t                     // .32
+	Z0 := int64(k)<<32 - t                     // .32
+	x0 := int32(int64(x)<<2 - X0>>18)          // .14: The x,y distances from the cell origin
+	y0 := int32(int64(y)<<2 - Y0>>18)          // .14
+	z0 := int32(int64(z)<<2 - Z0>>18)          // .14
 
 	// For the 3D case, the simplex shape is a slightly irregular tetrahedron.
 	// Determine which simplex we are in.
@@ -428,10 +428,10 @@ func Noise4(x, y, z, w int32) int16 {
 	l3 := bool2int32(simplex[c][3] >= 1)
 	// The fifth corner has all coordinate offsets = 1, so no need to look that up.
 
-	x1 := x0 - int32(i1)<<14 + G4>>18 // .14: Offsets for second corner in (x,y,z,w) coords
-	y1 := y0 - int32(j1)<<14 + G4>>18
-	z1 := z0 - int32(k1)<<14 + G4>>18
-	w1 := w0 - int32(l1)<<14 + G4>>18
+	x1 := x0 - i1<<14 + G4>>18 // .14: Offsets for second corner in (x,y,z,w) coords
+	y1 := y0 - j1<<14 + G4>>18
+	z1 := z0 - k1<<14 + G4>>18
+	w1 := w0 - l1<<14 + G4>>18
 	x2 := x0 - i2<<14 + 2*G4>>18 // .14: Offsets for third corner in (x,y,z,w) coords
 	y2 := y0 - j2<<14 + 2*G4>>18
 	z2 := z0 - k2<<14 + 2*G4>>18
@@ -449,7 +449,7 @@ func Noise4(x, y, z, w int32) int16 {
 	const fix0_6 = 39322         // .16: 0.6
 
 	// Calculate the contribution from the five corners
-	t0 := fix0_6 - int32((x0*x0+y0*y0+z0*z0+w0*w0)>>12) // .16
+	t0 := fix0_6 - (x0*x0+y0*y0+z0*z0+w0*w0)>>12 // .16
 	if t0 > 0 {
 		t0 = (t0 * t0) >> 16
 		t0 = (t0 * t0) >> 16
