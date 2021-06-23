@@ -1,0 +1,4 @@
+github.com/aykevl/Go-simplex-noise v0.0.0-20191228011045-32260ebd32da h1:u4fP3+V+W/547R/P7ezR5gH2zucphUZfQLc1ypNaXOg=
+github.com/aykevl/Go-simplex-noise v0.0.0-20191228011045-32260ebd32da/go.mod h1:Bn4qAbkSY0k0/wrXdqQ8bWPTv/Uww3uIJuQv/knzDdQ=
+github.com/kettek/apng v0.0.0-20191108220231-414630eed80f h1:dnCYnTSltLuPMfc7dMrkz2uBUcEf/OFBR8yRh3oRT98=
+github.com/kettek/apng v0.0.0-20191108220231-414630eed80f/go.mod h1:x78/VRQYKuCftMWS0uK5e+F5RJ7S4gSlESRWI0Prl6Q=

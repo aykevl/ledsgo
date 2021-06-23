@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/larspensjo/Go-simplex-noise/simplexnoise"
+	"github.com/aykevl/Go-simplex-noise/simplexnoise"
 )
 
 func TestNoise1(t *testing.T) {
