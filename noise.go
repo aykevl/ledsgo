@@ -186,21 +186,21 @@ func Noise2(x, y int32) int16 {
 	var n0, n1, n2 int32 // Noise contributions from the three corners
 
 	// Calculate the contribution from the three corners
-	t0 := (1 << 15) - ((x0*x0 + y0*y0) >> 12) // .16
+	t0 := ((1 << 27) - x0*x0 - y0*y0) >> 12 // .16
 	if t0 > 0 {
 		t0 = (t0 * t0) >> 16                                        // .16
 		t0 = (t0 * t0) >> 16                                        // .16
 		n0 = t0 * grad2(perm[(i+int32(perm[j&0xff]))&0xff], x0, y0) // .16 * .14 = .30
 	}
 
-	t1 := (1 << 15) - ((x1*x1 + y1*y1) >> 12) // .16
+	t1 := ((1 << 27) - x1*x1 - y1*y1) >> 12 // .16
 	if t1 > 0 {
 		t1 = (t1 * t1) >> 16                                                // .16
 		t1 = (t1 * t1) >> 16                                                // .16
 		n1 = t1 * grad2(perm[(i+i1+int32(perm[(j+j1)&0xff]))&0xff], x1, y1) // .16 * .14 = .30
 	}
 
-	t2 := (1 << 15) - ((x2*x2 + y2*y2) >> 12) // .16
+	t2 := ((1 << 27) - x2*x2 - y2*y2) >> 12 // .16
 	if t2 > 0 {
 		t2 = (t2 * t2) >> 16                                              // .16
 		t2 = (t2 * t2) >> 16                                              // .16
@@ -308,9 +308,9 @@ func Noise3(x, y, z int32) int16 {
 
 	// Calculate the contribution from the four corners
 	var n0, n1, n2, n3 int32 // .30
-	const fix0_6 = 39322     // .16: 0.6
+	const fix0_6 = 161061274 // .28: 0.6
 
-	t0 := fix0_6 - (x0*x0+y0*y0+z0*z0)>>12 // .16
+	t0 := (fix0_6 - x0*x0 - y0*y0 - z0*z0) >> 12 // .16
 	if t0 > 0 {
 		t0 = (t0 * t0) >> 16 // .16
 		t0 = (t0 * t0) >> 16 // .16
@@ -318,7 +318,7 @@ func Noise3(x, y, z int32) int16 {
 		n0 = t0 * grad3(perm[(i+int32(perm[(j+int32(perm[k&0xff]))&0xff]))&0xff], x0, y0, z0)
 	}
 
-	t1 := fix0_6 - (x1*x1+y1*y1+z1*z1)>>12 // .16
+	t1 := (fix0_6 - x1*x1 - y1*y1 - z1*z1) >> 12 // .16
 	if t1 > 0 {
 		t1 = (t1 * t1) >> 16 // .16
 		t1 = (t1 * t1) >> 16 // .16
@@ -326,7 +326,7 @@ func Noise3(x, y, z int32) int16 {
 		n1 = t1 * grad3(perm[(i+i1+int32(perm[(j+j1+int32(perm[(k+k1)&0xff]))&0xff]))&0xff], x1, y1, z1)
 	}
 
-	t2 := fix0_6 - (x2*x2+y2*y2+z2*z2)>>12 // .16
+	t2 := (fix0_6 - x2*x2 - y2*y2 - z2*z2) >> 12 // .16
 	if t2 > 0 {
 		t2 = (t2 * t2) >> 16 // .16
 		t2 = (t2 * t2) >> 16 // .16
@@ -334,7 +334,7 @@ func Noise3(x, y, z int32) int16 {
 		n2 = t2 * grad3(perm[(i+i2+int32(perm[(j+j2+int32(perm[(k+k2)&0xff]))&0xff]))&0xff], x2, y2, z2)
 	}
 
-	t3 := fix0_6 - (x3*x3+y3*y3+z3*z3)>>12 // .16
+	t3 := (fix0_6 - x3*x3 - y3*y3 - z3*z3) >> 12 // .16
 	if t3 > 0 {
 		t3 = (t3 * t3) >> 16 // .16
 		t3 = (t3 * t3) >> 16 // .16
@@ -446,10 +446,10 @@ func Noise4(x, y, z, w int32) int16 {
 	w4 := w0 - (1 << 14) + 4*G4>>18
 
 	var n0, n1, n2, n3, n4 int32 // Noise contributions from the five corners
-	const fix0_6 = 39322         // .16: 0.6
+	const fix0_6 = 161061274     // .28: 0.6
 
 	// Calculate the contribution from the five corners
-	t0 := fix0_6 - (x0*x0+y0*y0+z0*z0+w0*w0)>>12 // .16
+	t0 := (fix0_6 - x0*x0 - y0*y0 - z0*z0 - w0*w0) >> 12 // .16
 	if t0 > 0 {
 		t0 = (t0 * t0) >> 16
 		t0 = (t0 * t0) >> 16
@@ -457,7 +457,7 @@ func Noise4(x, y, z, w int32) int16 {
 		n0 = t0 * grad4(perm[(i+int32(perm[(j+int32(perm[(k+int32(perm[l&0xff]))&0xff]))&0xff]))&0xff], x0, y0, z0, w0)
 	}
 
-	t1 := fix0_6 - (x1*x1+y1*y1+z1*z1+w1*w1)>>12 // .16
+	t1 := (fix0_6 - x1*x1 - y1*y1 - z1*z1 - w1*w1) >> 12 // .16
 	if t1 > 0 {
 		t1 = (t1 * t1) >> 16
 		t1 = (t1 * t1) >> 16
@@ -465,7 +465,7 @@ func Noise4(x, y, z, w int32) int16 {
 		n1 = t1 * grad4(perm[(i+i1+int32(perm[(j+j1+int32(perm[(k+k1+int32(perm[(l+l1)&0xff]))&0xff]))&0xff]))&0xff], x1, y1, z1, w1)
 	}
 
-	t2 := fix0_6 - (x2*x2+y2*y2+z2*z2+w2*w2)>>12 // .16
+	t2 := (fix0_6 - x2*x2 - y2*y2 - z2*z2 - w2*w2) >> 12 // .16
 	if t2 > 0 {
 		t2 = (t2 * t2) >> 16
 		t2 = (t2 * t2) >> 16
@@ -473,7 +473,7 @@ func Noise4(x, y, z, w int32) int16 {
 		n2 = t2 * grad4(perm[(i+i2+int32(perm[(j+j2+int32(perm[(k+k2+int32(perm[(l+l2)&0xff]))&0xff]))&0xff]))&0xff], x2, y2, z2, w2)
 	}
 
-	t3 := fix0_6 - (x3*x3+y3*y3+z3*z3+w3*w3)>>12 // .16
+	t3 := (fix0_6 - x3*x3 - y3*y3 - z3*z3 - w3*w3) >> 12 // .16
 	if t3 > 0 {
 		t3 = (t3 * t3) >> 16
 		t3 = (t3 * t3) >> 16
@@ -481,7 +481,7 @@ func Noise4(x, y, z, w int32) int16 {
 		n3 = t3 * grad4(perm[(i+i3+int32(perm[(j+j3+int32(perm[(k+k3+int32(perm[(l+l3)&0xff]))&0xff]))&0xff]))&0xff], x3, y3, z3, w3)
 	}
 
-	t4 := fix0_6 - (x4*x4+y4*y4+z4*z4+w4*w4)>>12 // .16
+	t4 := (fix0_6 - x4*x4 - y4*y4 - z4*z4 - w4*w4) >> 12 // .16
 	if t4 > 0 {
 		t4 = (t4 * t4) >> 16
 		t4 = (t4 * t4) >> 16
