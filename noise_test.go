@@ -19,7 +19,7 @@ func TestNoise1(t *testing.T) {
 	diffmin := 0.0
 	for x := int64(0); x < numTests; x++ { // .12
 		n1 := simplexnoise.Noise1(float64(x) / 0x1000)
-		n2 := float64(Noise1(int32(x))) / 0x8000
+		n2 := float64(int16(Noise1(uint32(x))-0x8000)) / 0x8000
 		rangesum += n2
 		if n2 > rangemax {
 			rangemax = n2
@@ -69,10 +69,10 @@ func TestNoise2(t *testing.T) {
 	diffmin := 0.0
 	for i := 0; i < numTestsSub; i++ { // .12
 		for j := 0; j < numTestsSub; j++ { // .12
-			x := int32(r.Int63())
-			y := int32(r.Int63())
+			x := uint32(r.Int63())
+			y := uint32(r.Int63())
 			n1 := simplexnoise.Noise2(float64(x)/0x1000, float64(y)/0x1000)
-			n2 := float64(Noise2(int32(x), int32(y))) / 0x8000
+			n2 := float64(int16(Noise2(x, y)-0x8000)) / 0x8000
 			rangesum += n2
 			if n2 > rangemax {
 				rangemax = n2
@@ -129,11 +129,11 @@ func TestNoise3(t *testing.T) {
 	for i := 0; i < numTestsSub; i++ { // .12
 		for j := 0; j < numTestsSub; j++ { // .12
 			for k := 0; k < numTestsSub; k++ { // .12
-				x := int32(r.Int63())
-				y := int32(r.Int63())
-				z := int32(r.Int63())
+				x := uint32(r.Int63())
+				y := uint32(r.Int63())
+				z := uint32(r.Int63())
 				n1 := simplexnoise.Noise3(float64(x)/0x1000, float64(y)/0x1000, float64(z)/0x1000)
-				n2 := float64(Noise3(int32(x), int32(y), int32(z))) / 0x8000
+				n2 := float64(int16(Noise3(x, y, z)+0x8000)) / 0x8000
 				rangesum += n2
 				if n2 > rangemax {
 					rangemax = n2
@@ -192,12 +192,12 @@ func TestNoise4(t *testing.T) {
 		for j := 0; j < numTestsSub; j++ { // .12
 			for k := 0; k < numTestsSub; k++ { // .12
 				for l := 0; l < numTestsSub; l++ { // .12
-					x := int32(r.Int63())
-					y := int32(r.Int63())
-					z := int32(r.Int63())
-					w := int32(r.Int63())
+					x := uint32(r.Int63())
+					y := uint32(r.Int63())
+					z := uint32(r.Int63())
+					w := uint32(r.Int63())
 					n1 := simplexnoise.Noise4(float64(x)/0x1000, float64(y)/0x1000, float64(z)/0x1000, float64(w)/0x1000)
-					n2 := float64(Noise4(int32(x), int32(y), int32(z), int32(w))) / 0x8000
+					n2 := float64(int16(Noise4(x, y, z, w)-0x8000)) / 0x8000
 					rangesum += n2
 					if n2 > rangemax {
 						rangemax = n2
@@ -228,29 +228,29 @@ func TestNoise4(t *testing.T) {
 	t.Logf("number of tests: %d", numTests)
 	t.Logf("range: avg %+2.6f max %+2.6f min %+2.6f", rangeavg, rangemax, rangemin)
 	t.Logf("diff:  avg %+2.6f max %+2.6f min %+2.6f", diffavg, diffmax, diffmin)
-	if diffavg >= 0.0004 {
+	if diffavg >= 0.0006 {
 		t.Errorf("diff avg between float and fixed-point is too big: %f", diffavg)
 	}
-	if diffmax > 0.005 {
+	if diffmax > 0.008 {
 		t.Errorf("diff max is too high: %f", diffmax)
 	}
-	if diffmin < -0.005 {
+	if diffmin < -0.008 {
 		t.Errorf("diff min is too low: %f", diffmin)
 	}
 }
 
 // avoid compiler optimizations
 var (
-	resultInt16   int16
+	resultUint16  uint16
 	resultFloat64 float64
 )
 
 func BenchmarkNoise1(b *testing.B) {
-	var r int16
+	var r uint16
 	for n := 0; n < b.N; n++ {
-		r = Noise1(int32(n))
+		r = Noise1(uint32(n))
 	}
-	resultInt16 = r
+	resultUint16 = r
 }
 
 func BenchmarkNoise1Float(b *testing.B) {
@@ -262,11 +262,11 @@ func BenchmarkNoise1Float(b *testing.B) {
 }
 
 func BenchmarkNoise2(b *testing.B) {
-	var r int16
+	var r uint16
 	for n := 0; n < b.N; n++ {
-		r = Noise2(int32(n), int32(n))
+		r = Noise2(uint32(n), uint32(n))
 	}
-	resultInt16 = r
+	resultUint16 = r
 }
 
 func BenchmarkNoise2Float(b *testing.B) {
@@ -278,11 +278,11 @@ func BenchmarkNoise2Float(b *testing.B) {
 }
 
 func BenchmarkNoise3(b *testing.B) {
-	var r int16
+	var r uint16
 	for n := 0; n < b.N; n++ {
-		r = Noise3(int32(n), int32(n), int32(n))
+		r = Noise3(uint32(n), uint32(n), uint32(n))
 	}
-	resultInt16 = r
+	resultUint16 = r
 }
 
 func BenchmarkNoise3Float(b *testing.B) {
@@ -294,11 +294,11 @@ func BenchmarkNoise3Float(b *testing.B) {
 }
 
 func BenchmarkNoise4(b *testing.B) {
-	var r int16
+	var r uint16
 	for n := 0; n < b.N; n++ {
-		r = Noise4(int32(n), int32(n), int32(n), int32(n))
+		r = Noise4(uint32(n), uint32(n), uint32(n), uint32(n))
 	}
-	resultInt16 = r
+	resultUint16 = r
 }
 
 func BenchmarkNoise4Float(b *testing.B) {

@@ -77,7 +77,7 @@ func q(cond bool, v1 int32, v2 int32) int32 {
 	return v2
 }
 
-func bool2int32(b bool) int32 {
+func bool2uint32(b bool) uint32 {
 	if b {
 		return 1
 	} else {
@@ -120,13 +120,14 @@ func grad4(hash uint8, x, y, z, t int32) int32 {
 
 // 1D simplex noise.
 //
-// The x input is a 19.12 fixed-point value. The result covers the full range of
-// an int16 so is a 0.15 fixed-point value.
-func Noise1(x int32) int16 {
+// The x input is a 20.12 fixed-point value. The result covers the full range of
+// a uint16, averaging around 32768.
+// Only the low 20 bits of x are used.
+func Noise1(x uint32) uint16 {
 	i0 := x >> 12
 	i1 := i0 + 1
-	x0 := x & 0xfff   // .12
-	x1 := x0 - 0x1000 // .12
+	x0 := int32(x & 0xfff)   // .12
+	x1 := int32(x0 - 0x1000) // .12
 
 	t0 := 0x8000 - (x0*x0)>>9                   // .15
 	t0 = (t0 * t0) >> 15                        // .15
@@ -141,31 +142,31 @@ func Noise1(x int32) int16 {
 	n := n0 + n1          // .15
 	n += 2503             // .15: fix offset, adjust to +0.03
 	n = (n << 14) / 40225 // .15: fix scale to fit in [-1,1]
-	return int16(n)
+	return uint16(n + 0x8000)
 }
 
 // 2D simplex noise.
 //
-// The x and y inputs are 19.12 fixed-point value. The result covers the full
-// range of an int16 so is a 0.15 fixed-point value.
-func Noise2(x, y int32) int16 {
+// The x and y inputs are 20.12 fixed-point value. The result covers the full
+// range of a uint16, averaging around 32768.
+func Noise2(x, y uint32) uint16 {
 	const F2 = 1572067135 // .32: F2 = 0.5*(sqrt(3.0)-1.0)
 	const G2 = 907633384  // .32: G2 = (3.0-Math.sqrt(3.0))/6.0
 
 	// Skew the input space to determine which simplex cell we're in
-	s := int32(((int64(x) + int64(y)) * F2) >> 32) // (.12 + .12) * .32 = .12: Hairy factor for 2D
-	i := (x>>1 + s>>1) >> 11                       // .0
-	j := (y>>1 + s>>1) >> 11                       // .0
+	s := uint32(((uint64(x) + uint64(y)) * F2) >> 32) // (.12 + .12) * .32 = .12: Hairy factor for 2D
+	i := (x>>1 + s>>1) >> 11                          // .0
+	j := (y>>1 + s>>1) >> 11                          // .0
 
-	t := (int64(i) + int64(j)) * G2   // .32
-	X0 := int64(i)<<32 - t            // .32: Unskew the cell origin back to (x,y) space
-	Y0 := int64(j)<<32 - t            // .32
-	x0 := int32(int64(x)<<2 - X0>>18) // .14: The x,y distances from the cell origin
-	y0 := int32(int64(y)<<2 - Y0>>18) // .14
+	t := (uint64(i) + uint64(j)) * G2  // .32
+	X0 := uint64(i)<<32 - t            // .32: Unskew the cell origin back to (x,y) space
+	Y0 := uint64(j)<<32 - t            // .32
+	x0 := int32(uint64(x)<<2 - X0>>18) // .14: The x,y distances from the cell origin
+	y0 := int32(uint64(y)<<2 - Y0>>18) // .14
 
 	// For the 2D case, the simplex shape is an equilateral triangle.
 	// Determine which simplex we are in.
-	var i1, j1 int32 // Offsets for second (middle) corner of simplex in (i,j) coords
+	var i1, j1 uint32 // Offsets for second (middle) corner of simplex in (i,j) coords
 	if x0 > y0 {
 		i1 = 1
 		j1 = 0 // lower triangle, XY order: (0,0)->(1,0)->(1,1)
@@ -178,69 +179,69 @@ func Noise2(x, y int32) int16 {
 	// a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
 	// c = (3-sqrt(3))/6
 
-	x1 := x0 - i1<<14 + G2>>18      // .14: Offsets for middle corner in (x,y) unskewed coords
-	y1 := y0 - j1<<14 + G2>>18      // .14
-	x2 := x0 - (1 << 14) + 2*G2>>18 // .14: Offsets for last corner in (x,y) unskewed coords
-	y2 := y0 - (1 << 14) + 2*G2>>18 // .14
+	x1 := x0 - int32(i1)<<14 + G2>>18 // .14: Offsets for middle corner in (x,y) unskewed coords
+	y1 := y0 - int32(j1)<<14 + G2>>18 // .14
+	x2 := x0 - (1 << 14) + 2*G2>>18   // .14: Offsets for last corner in (x,y) unskewed coords
+	y2 := y0 - (1 << 14) + 2*G2>>18   // .14
 
 	var n0, n1, n2 int32 // Noise contributions from the three corners
 
 	// Calculate the contribution from the three corners
 	t0 := ((1 << 27) - x0*x0 - y0*y0) >> 12 // .16
 	if t0 > 0 {
-		t0 = (t0 * t0) >> 16                                        // .16
-		t0 = (t0 * t0) >> 16                                        // .16
-		n0 = t0 * grad2(perm[(i+int32(perm[j&0xff]))&0xff], x0, y0) // .16 * .14 = .30
+		t0 = (t0 * t0) >> 16                                         // .16
+		t0 = (t0 * t0) >> 16                                         // .16
+		n0 = t0 * grad2(perm[(i+uint32(perm[j&0xff]))&0xff], x0, y0) // .16 * .14 = .30
 	}
 
 	t1 := ((1 << 27) - x1*x1 - y1*y1) >> 12 // .16
 	if t1 > 0 {
-		t1 = (t1 * t1) >> 16                                                // .16
-		t1 = (t1 * t1) >> 16                                                // .16
-		n1 = t1 * grad2(perm[(i+i1+int32(perm[(j+j1)&0xff]))&0xff], x1, y1) // .16 * .14 = .30
+		t1 = (t1 * t1) >> 16                                                 // .16
+		t1 = (t1 * t1) >> 16                                                 // .16
+		n1 = t1 * grad2(perm[(i+i1+uint32(perm[(j+j1)&0xff]))&0xff], x1, y1) // .16 * .14 = .30
 	}
 
 	t2 := ((1 << 27) - x2*x2 - y2*y2) >> 12 // .16
 	if t2 > 0 {
-		t2 = (t2 * t2) >> 16                                              // .16
-		t2 = (t2 * t2) >> 16                                              // .16
-		n2 = t2 * grad2(perm[(i+1+int32(perm[(j+1)&0xff]))&0xff], x2, y2) // .16 * .14 = .30
+		t2 = (t2 * t2) >> 16                                               // .16
+		t2 = (t2 * t2) >> 16                                               // .16
+		n2 = t2 * grad2(perm[(i+1+uint32(perm[(j+1)&0xff]))&0xff], x2, y2) // .16 * .14 = .30
 	}
 
 	// Add contributions from each corner to get the final noise value.
 	// The result is scaled to return values in the interval [-1,1].
 	n := n0 + n1 + n2    // .30
 	n = (n << 6) / 46360 // fix scale to fit exactly in an int16
-	return int16(n)
+	return uint16(n) + 0x8000
 }
 
 // 3D simplex noise.
 //
-// The x and y inputs are 19.12 fixed-point value. The result covers the full
-// range of an int16 so is a 0.15 fixed-point value.
-func Noise3(x, y, z int32) int16 {
+// The x, y and z inputs are 20.12 fixed-point value. The result covers the full
+// range of a uint16, averaging around 32768.
+func Noise3(x, y, z uint32) uint16 {
 	// Simple skewing factors for the 3D case
 	const F3 = 1431655764 // .32: 0.333333333
 	const G3 = 715827884  // .32: 0.166666667
 
 	// Skew the input space to determine which simplex cell we're in
-	s := int32(((int64(x) + int64(y) + int64(z)) * F3) >> 32) // .12 + .32 = .12: Very nice and simple skew factor for 3D
-	i := (x>>1 + s>>1) >> 11                                  // .0
-	j := (y>>1 + s>>1) >> 11                                  // .0
-	k := (z>>1 + s>>1) >> 11                                  // .0
+	s := uint32(((uint64(x) + uint64(y) + uint64(z)) * F3) >> 32) // .12 + .32 = .12: Very nice and simple skew factor for 3D
+	i := (x>>1 + s>>1) >> 11                                      // .0
+	j := (y>>1 + s>>1) >> 11                                      // .0
+	k := (z>>1 + s>>1) >> 11                                      // .0
 
-	t := (int64(i) + int64(j) + int64(k)) * G3 // .32
-	X0 := int64(i)<<32 - t                     // .32: Unskew the cell origin back to (x,y) space
-	Y0 := int64(j)<<32 - t                     // .32
-	Z0 := int64(k)<<32 - t                     // .32
-	x0 := int32(int64(x)<<2 - X0>>18)          // .14: The x,y distances from the cell origin
-	y0 := int32(int64(y)<<2 - Y0>>18)          // .14
-	z0 := int32(int64(z)<<2 - Z0>>18)          // .14
+	t := (uint64(i) + uint64(j) + uint64(k)) * G3 // .32
+	X0 := uint64(i)<<32 - t                       // .32: Unskew the cell origin back to (x,y) space
+	Y0 := uint64(j)<<32 - t                       // .32
+	Z0 := uint64(k)<<32 - t                       // .32
+	x0 := int32(uint64(x)<<2 - X0>>18)            // .14: The x,y distances from the cell origin
+	y0 := int32(uint64(y)<<2 - Y0>>18)            // .14
+	z0 := int32(uint64(z)<<2 - Z0>>18)            // .14
 
 	// For the 3D case, the simplex shape is a slightly irregular tetrahedron.
 	// Determine which simplex we are in.
-	var i1, j1, k1 int32 // Offsets for second corner of simplex in (i,j,k) coords
-	var i2, j2, k2 int32 // Offsets for third corner of simplex in (i,j,k) coords
+	var i1, j1, k1 uint32 // Offsets for second corner of simplex in (i,j,k) coords
+	var i2, j2, k2 uint32 // Offsets for third corner of simplex in (i,j,k) coords
 
 	// This code would benefit from a backport from the GLSL version!
 	if x0 >= y0 {
@@ -296,15 +297,15 @@ func Noise3(x, y, z int32) int16 {
 	// a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
 	// c = 1/6.
 
-	x1 := x0 - i1<<14 + G3>>18      // .14: Offsets for second corner in (x,y,z) coords
-	y1 := y0 - j1<<14 + G3>>18      // .14
-	z1 := z0 - k1<<14 + G3>>18      // .14
-	x2 := x0 - i2<<14 + 2*G3>>18    // .14: Offsets for third corner in (x,y,z) coords
-	y2 := y0 - j2<<14 + 2*G3>>18    // .14
-	z2 := z0 - k2<<14 + 2*G3>>18    // .14
-	x3 := x0 - (1 << 14) + 3*G3>>18 // .14: Offsets for last corner in (x,y,z) coords
-	y3 := y0 - (1 << 14) + 3*G3>>18 // .14
-	z3 := z0 - (1 << 14) + 3*G3>>18 // .14
+	x1 := x0 - int32(i1)<<14 + G3>>18   // .14: Offsets for second corner in (x,y,z) coords
+	y1 := y0 - int32(j1)<<14 + G3>>18   // .14
+	z1 := z0 - int32(k1)<<14 + G3>>18   // .14
+	x2 := x0 - int32(i2)<<14 + 2*G3>>18 // .14: Offsets for third corner in (x,y,z) coords
+	y2 := y0 - int32(j2)<<14 + 2*G3>>18 // .14
+	z2 := z0 - int32(k2)<<14 + 2*G3>>18 // .14
+	x3 := x0 - (1 << 14) + 3*G3>>18     // .14: Offsets for last corner in (x,y,z) coords
+	y3 := y0 - (1 << 14) + 3*G3>>18     // .14
+	z3 := z0 - (1 << 14) + 3*G3>>18     // .14
 
 	// Calculate the contribution from the four corners
 	var n0, n1, n2, n3 int32 // .30
@@ -315,7 +316,7 @@ func Noise3(x, y, z int32) int16 {
 		t0 = (t0 * t0) >> 16 // .16
 		t0 = (t0 * t0) >> 16 // .16
 		// .16 * .14 = .30
-		n0 = t0 * grad3(perm[(i+int32(perm[(j+int32(perm[k&0xff]))&0xff]))&0xff], x0, y0, z0)
+		n0 = t0 * grad3(perm[(i+uint32(perm[(j+uint32(perm[k&0xff]))&0xff]))&0xff], x0, y0, z0)
 	}
 
 	t1 := (fix0_6 - x1*x1 - y1*y1 - z1*z1) >> 12 // .16
@@ -323,7 +324,7 @@ func Noise3(x, y, z int32) int16 {
 		t1 = (t1 * t1) >> 16 // .16
 		t1 = (t1 * t1) >> 16 // .16
 		// .16 * .14 = .30
-		n1 = t1 * grad3(perm[(i+i1+int32(perm[(j+j1+int32(perm[(k+k1)&0xff]))&0xff]))&0xff], x1, y1, z1)
+		n1 = t1 * grad3(perm[(i+i1+uint32(perm[(j+j1+uint32(perm[(k+k1)&0xff]))&0xff]))&0xff], x1, y1, z1)
 	}
 
 	t2 := (fix0_6 - x2*x2 - y2*y2 - z2*z2) >> 12 // .16
@@ -331,7 +332,7 @@ func Noise3(x, y, z int32) int16 {
 		t2 = (t2 * t2) >> 16 // .16
 		t2 = (t2 * t2) >> 16 // .16
 		// .16 * .14 = .30
-		n2 = t2 * grad3(perm[(i+i2+int32(perm[(j+j2+int32(perm[(k+k2)&0xff]))&0xff]))&0xff], x2, y2, z2)
+		n2 = t2 * grad3(perm[(i+i2+uint32(perm[(j+j2+uint32(perm[(k+k2)&0xff]))&0xff]))&0xff], x2, y2, z2)
 	}
 
 	t3 := (fix0_6 - x3*x3 - y3*y3 - z3*z3) >> 12 // .16
@@ -339,42 +340,42 @@ func Noise3(x, y, z int32) int16 {
 		t3 = (t3 * t3) >> 16 // .16
 		t3 = (t3 * t3) >> 16 // .16
 		// .16 * .14 = .30
-		n3 = t3 * grad3(perm[(i+1+int32(perm[(j+1+int32(perm[(k+1)&0xff]))&0xff]))&0xff], x3, y3, z3)
+		n3 = t3 * grad3(perm[(i+1+uint32(perm[(j+1+uint32(perm[(k+1)&0xff]))&0xff]))&0xff], x3, y3, z3)
 	}
 
 	// Add contributions from each corner to get the final noise value.
 	// The result is scaled to stay just inside [-1,1]
 	n := n0 + n1 + n2 + n3 // .30
 	n = (n << 6) / 64120   // fix scale to fit exactly in an int16
-	return int16(n)
+	return uint16(n) + 0x8000
 }
 
 // 4D simplex noise.
 //
-// The x, y, z, and w inputs are 19.12 fixed-point value. The result covers the
-// full range of an int16 so is a 0.15 fixed-point value.
-func Noise4(x, y, z, w int32) int16 {
+// The x, y, z and w inputs are 20.12 fixed-point value. The result covers the
+// full range of a uint16, averaging around 32768.
+func Noise4(x, y, z, w uint32) uint16 {
 	// The skewing and unskewing factors are hairy again for the 4D case
 	const F4 = 331804471 // .30: (Math.sqrt(5.0)-1.0)/4.0 = 0.30901699437494745
 	const G4 = 593549882 // .32: (5.0-Math.sqrt(5.0))/20.0 = 0.1381966011250105
 
 	// Skew the (x,y,z,w) space to determine which cell of 24 simplices we're
 	// in.
-	s := int32(((int64(x) + int64(y) + int64(z) + int64(w)) * F4) >> 32) // .12 + .30 = .10: Factor for 4D skewing.
-	i := (x>>2 + s) >> 10                                                // .0
-	j := (y>>2 + s) >> 10                                                // .0
-	k := (z>>2 + s) >> 10                                                // .0
-	l := (w>>2 + s) >> 10                                                // .0
+	s := uint32(((uint64(x) + uint64(y) + uint64(z) + uint64(w)) * F4) >> 32) // .12 + .30 = .10: Factor for 4D skewing.
+	i := (x>>2 + s) >> 10                                                     // .0
+	j := (y>>2 + s) >> 10                                                     // .0
+	k := (z>>2 + s) >> 10                                                     // .0
+	l := (w>>2 + s) >> 10                                                     // .0
 
-	t := ((int64(i) + int64(j) + int64(k) + int64(l)) * G4) >> 18 // .14
-	X0 := int64(i)<<14 - t                                        // .14: Unskew the cell origin back to (x,y,z,w) space
-	Y0 := int64(j)<<14 - t                                        // .14
-	Z0 := int64(k)<<14 - t                                        // .14
-	W0 := int64(l)<<14 - t                                        // .14
-	x0 := int32(int64(x)<<2 - X0)                                 // .14: The x,y,z,w distances from the cell origin
-	y0 := int32(int64(y)<<2 - Y0)                                 // .14
-	z0 := int32(int64(z)<<2 - Z0)                                 // .14
-	w0 := int32(int64(w)<<2 - W0)                                 // .14
+	t := ((uint64(i) + uint64(j) + uint64(k) + uint64(l)) * G4) >> 18 // .14
+	X0 := uint64(i)<<14 - t                                           // .14: Unskew the cell origin back to (x,y,z,w) space
+	Y0 := uint64(j)<<14 - t                                           // .14
+	Z0 := uint64(k)<<14 - t                                           // .14
+	W0 := uint64(l)<<14 - t                                           // .14
+	x0 := int32(uint64(x)<<2 - X0)                                    // .14: The x,y,z,w distances from the cell origin
+	y0 := int32(uint64(y)<<2 - Y0)                                    // .14
+	z0 := int32(uint64(z)<<2 - Z0)                                    // .14
+	w0 := int32(uint64(w)<<2 - W0)                                    // .14
 
 	// For the 4D case, the simplex is a 4D shape I won't even try to describe.
 	// To find out which of the 24 possible simplices we're in, we need to
@@ -410,36 +411,36 @@ func Noise4(x, y, z, w int32) int16 {
 	// We use a thresholding to set the coordinates in turn from the largest magnitude.
 	// The number 3 in the "simplex" array is at the position of the largest coordinate.
 	// The integer offsets for the second simplex corner
-	i1 := bool2int32(simplex[c][0] >= 3)
-	j1 := bool2int32(simplex[c][1] >= 3)
-	k1 := bool2int32(simplex[c][2] >= 3)
-	l1 := bool2int32(simplex[c][3] >= 3)
+	i1 := bool2uint32(simplex[c][0] >= 3)
+	j1 := bool2uint32(simplex[c][1] >= 3)
+	k1 := bool2uint32(simplex[c][2] >= 3)
+	l1 := bool2uint32(simplex[c][3] >= 3)
 	// The number 2 in the "simplex" array is at the second largest coordinate.
 	// The integer offsets for the third simplex corner
-	i2 := bool2int32(simplex[c][0] >= 2)
-	j2 := bool2int32(simplex[c][1] >= 2)
-	k2 := bool2int32(simplex[c][2] >= 2)
-	l2 := bool2int32(simplex[c][3] >= 2)
+	i2 := bool2uint32(simplex[c][0] >= 2)
+	j2 := bool2uint32(simplex[c][1] >= 2)
+	k2 := bool2uint32(simplex[c][2] >= 2)
+	l2 := bool2uint32(simplex[c][3] >= 2)
 	// The number 1 in the "simplex" array is at the second smallest coordinate.
 	// The integer offsets for the fourth simplex corner
-	i3 := bool2int32(simplex[c][0] >= 1)
-	j3 := bool2int32(simplex[c][1] >= 1)
-	k3 := bool2int32(simplex[c][2] >= 1)
-	l3 := bool2int32(simplex[c][3] >= 1)
+	i3 := bool2uint32(simplex[c][0] >= 1)
+	j3 := bool2uint32(simplex[c][1] >= 1)
+	k3 := bool2uint32(simplex[c][2] >= 1)
+	l3 := bool2uint32(simplex[c][3] >= 1)
 	// The fifth corner has all coordinate offsets = 1, so no need to look that up.
 
-	x1 := x0 - i1<<14 + G4>>18 // .14: Offsets for second corner in (x,y,z,w) coords
-	y1 := y0 - j1<<14 + G4>>18
-	z1 := z0 - k1<<14 + G4>>18
-	w1 := w0 - l1<<14 + G4>>18
-	x2 := x0 - i2<<14 + 2*G4>>18 // .14: Offsets for third corner in (x,y,z,w) coords
-	y2 := y0 - j2<<14 + 2*G4>>18
-	z2 := z0 - k2<<14 + 2*G4>>18
-	w2 := w0 - l2<<14 + 2*G4>>18
-	x3 := x0 - i3<<14 + 3*G4>>18 // .14: Offsets for fourth corner in (x,y,z,w) coords
-	y3 := y0 - j3<<14 + 3*G4>>18
-	z3 := z0 - k3<<14 + 3*G4>>18
-	w3 := w0 - l3<<14 + 3*G4>>18
+	x1 := x0 - int32(i1)<<14 + G4>>18 // .14: Offsets for second corner in (x,y,z,w) coords
+	y1 := y0 - int32(j1)<<14 + G4>>18
+	z1 := z0 - int32(k1)<<14 + G4>>18
+	w1 := w0 - int32(l1)<<14 + G4>>18
+	x2 := x0 - int32(i2)<<14 + 2*G4>>18 // .14: Offsets for third corner in (x,y,z,w) coords
+	y2 := y0 - int32(j2)<<14 + 2*G4>>18
+	z2 := z0 - int32(k2)<<14 + 2*G4>>18
+	w2 := w0 - int32(l2)<<14 + 2*G4>>18
+	x3 := x0 - int32(i3)<<14 + 3*G4>>18 // .14: Offsets for fourth corner in (x,y,z,w) coords
+	y3 := y0 - int32(j3)<<14 + 3*G4>>18
+	z3 := z0 - int32(k3)<<14 + 3*G4>>18
+	w3 := w0 - int32(l3)<<14 + 3*G4>>18
 	x4 := x0 - (1 << 14) + 4*G4>>18 // .14: Offsets for last corner in (x,y,z,w) coords
 	y4 := y0 - (1 << 14) + 4*G4>>18
 	z4 := z0 - (1 << 14) + 4*G4>>18
@@ -454,7 +455,7 @@ func Noise4(x, y, z, w int32) int16 {
 		t0 = (t0 * t0) >> 16
 		t0 = (t0 * t0) >> 16
 		// .16 * .14 = .30
-		n0 = t0 * grad4(perm[(i+int32(perm[(j+int32(perm[(k+int32(perm[l&0xff]))&0xff]))&0xff]))&0xff], x0, y0, z0, w0)
+		n0 = t0 * grad4(perm[(i+uint32(perm[(j+uint32(perm[(k+uint32(perm[l&0xff]))&0xff]))&0xff]))&0xff], x0, y0, z0, w0)
 	}
 
 	t1 := (fix0_6 - x1*x1 - y1*y1 - z1*z1 - w1*w1) >> 12 // .16
@@ -462,7 +463,7 @@ func Noise4(x, y, z, w int32) int16 {
 		t1 = (t1 * t1) >> 16
 		t1 = (t1 * t1) >> 16
 		// .16 * .14 = .30
-		n1 = t1 * grad4(perm[(i+i1+int32(perm[(j+j1+int32(perm[(k+k1+int32(perm[(l+l1)&0xff]))&0xff]))&0xff]))&0xff], x1, y1, z1, w1)
+		n1 = t1 * grad4(perm[(i+i1+uint32(perm[(j+j1+uint32(perm[(k+k1+uint32(perm[(l+l1)&0xff]))&0xff]))&0xff]))&0xff], x1, y1, z1, w1)
 	}
 
 	t2 := (fix0_6 - x2*x2 - y2*y2 - z2*z2 - w2*w2) >> 12 // .16
@@ -470,7 +471,7 @@ func Noise4(x, y, z, w int32) int16 {
 		t2 = (t2 * t2) >> 16
 		t2 = (t2 * t2) >> 16
 		// .16 * .14 = .30
-		n2 = t2 * grad4(perm[(i+i2+int32(perm[(j+j2+int32(perm[(k+k2+int32(perm[(l+l2)&0xff]))&0xff]))&0xff]))&0xff], x2, y2, z2, w2)
+		n2 = t2 * grad4(perm[(i+i2+uint32(perm[(j+j2+uint32(perm[(k+k2+uint32(perm[(l+l2)&0xff]))&0xff]))&0xff]))&0xff], x2, y2, z2, w2)
 	}
 
 	t3 := (fix0_6 - x3*x3 - y3*y3 - z3*z3 - w3*w3) >> 12 // .16
@@ -478,7 +479,7 @@ func Noise4(x, y, z, w int32) int16 {
 		t3 = (t3 * t3) >> 16
 		t3 = (t3 * t3) >> 16
 		// .16 * .14 = .30
-		n3 = t3 * grad4(perm[(i+i3+int32(perm[(j+j3+int32(perm[(k+k3+int32(perm[(l+l3)&0xff]))&0xff]))&0xff]))&0xff], x3, y3, z3, w3)
+		n3 = t3 * grad4(perm[(i+i3+uint32(perm[(j+j3+uint32(perm[(k+k3+uint32(perm[(l+l3)&0xff]))&0xff]))&0xff]))&0xff], x3, y3, z3, w3)
 	}
 
 	t4 := (fix0_6 - x4*x4 - y4*y4 - z4*z4 - w4*w4) >> 12 // .16
@@ -486,9 +487,9 @@ func Noise4(x, y, z, w int32) int16 {
 		t4 = (t4 * t4) >> 16
 		t4 = (t4 * t4) >> 16
 		// .16 * .14 = .30
-		n4 = t4 * grad4(perm[(i+1+int32(perm[(j+1+int32(perm[(k+1+int32(perm[(l+1)&0xff]))&0xff]))&0xff]))&0xff], x4, y4, z4, w4)
+		n4 = t4 * grad4(perm[(i+1+uint32(perm[(j+1+uint32(perm[(k+1+uint32(perm[(l+1)&0xff]))&0xff]))&0xff]))&0xff], x4, y4, z4, w4)
 	}
 
 	n := n0 + n1 + n2 + n3 + n4 // .30
-	return int16(n / 1213)
+	return uint16(n/1213) + 0x8000
 }
