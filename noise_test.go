@@ -85,13 +85,13 @@ func TestNoise2(t *testing.T) {
 			if diff > diffmax {
 				diffmax = diff
 				if diffmax > 0.1 {
-					t.Fatalf("diffmax at x=%d; y=%d: %f", x, y, diffmax)
+					t.Errorf("diffmax at x=%d; y=%d: %f", x, y, diffmax)
 				}
 			}
 			if diff < diffmin {
 				diffmin = diff
 				if diffmin < -0.1 {
-					t.Fatalf("diffmin at x=%d; y=%d: %f", x, y, diffmin)
+					t.Errorf("diffmin at x=%d; y=%d: %f", x, y, diffmin)
 				}
 			}
 			if i%32 == 0 && j%32 == 0 {
@@ -146,13 +146,13 @@ func TestNoise3(t *testing.T) {
 				if diff > diffmax {
 					diffmax = diff
 					if diffmax > 0.1 {
-						t.Fatalf("diffmax at x=%d; y=%d; z=%d: %f", x, y, z, diffmax)
+						t.Errorf("diffmax at x=%d; y=%d; z=%d: %f", x, y, z, diffmax)
 					}
 				}
 				if diff < diffmin {
 					diffmin = diff
 					if diffmin < -0.1 {
-						t.Fatalf("diffmin at x=%d; y=%d; z=%d: %f", x, y, z, diffmin)
+						t.Errorf("diffmin at x=%d; y=%d; z=%d: %f", x, y, z, diffmin)
 					}
 				}
 				if i%32 == 0 && j%32 == 0 && k%32 == 0 {
@@ -180,6 +180,7 @@ func TestNoise3(t *testing.T) {
 func TestNoise4(t *testing.T) {
 	r := rand.NewSource(0)
 	numTestsSub := 48 // ~2s
+	//numTestsSub = 100 // ~40s
 	numTests := numTestsSub * numTestsSub * numTestsSub * numTestsSub
 	rangemax := 0.0
 	rangemin := 0.0
@@ -209,15 +210,13 @@ func TestNoise4(t *testing.T) {
 					if diff > diffmax {
 						diffmax = diff
 						if diffmax > 0.1 {
-							t.Logf("diffmax at x=%d; y=%d; z=%d; w=%d: %f", x, y, z, w, diffmax)
-							t.Fail()
+							t.Errorf("diffmax at x=%d; y=%d; z=%d; w=%d: %f", x, y, z, w, diffmax)
 						}
 					}
 					if diff < diffmin {
 						diffmin = diff
 						if diffmin < -0.1 {
-							t.Logf("diffmin at x=%d; y=%d; z=%d; w=%d: %f", x, y, z, w, diffmin)
-							t.Fail()
+							t.Errorf("diffmin at x=%d; y=%d; z=%d; w=%d: %f", x, y, z, w, diffmin)
 						}
 					}
 				}
