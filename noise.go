@@ -141,7 +141,7 @@ func Noise1(x uint32) uint16 {
 
 	n := n0 + n1          // .15
 	n += 2503             // .15: fix offset, adjust to +0.03
-	n = (n << 14) / 40225 // .15: fix scale to fit in [-1,1]
+	n = (n * 26694) >> 16 // .15: fix scale to fit in [-1,1]
 	return uint16(n + 0x8000)
 }
 
@@ -210,8 +210,8 @@ func Noise2(x, y uint32) uint16 {
 
 	// Add contributions from each corner to get the final noise value.
 	// The result is scaled to return values in the interval [-1,1].
-	n := n0 + n1 + n2    // .30
-	n = (n << 6) / 46360 // fix scale to fit exactly in an int16
+	n := n0 + n1 + n2            // .30
+	n = ((n >> 8) * 23163) >> 16 // fix scale to fit exactly in an int16
 	return uint16(n) + 0x8000
 }
 
@@ -345,8 +345,8 @@ func Noise3(x, y, z uint32) uint16 {
 
 	// Add contributions from each corner to get the final noise value.
 	// The result is scaled to stay just inside [-1,1]
-	n := n0 + n1 + n2 + n3 // .30
-	n = (n << 6) / 64120   // fix scale to fit exactly in an int16
+	n := n0 + n1 + n2 + n3       // .30
+	n = ((n >> 8) * 16748) >> 16 // fix scale to fit exactly in an int16
 	return uint16(n) + 0x8000
 }
 
@@ -490,6 +490,7 @@ func Noise4(x, y, z, w uint32) uint16 {
 		n4 = t4 * grad4(perm[(i+1+uint32(perm[(j+1+uint32(perm[(k+1+uint32(perm[(l+1)&0xff]))&0xff]))&0xff]))&0xff], x4, y4, z4, w4)
 	}
 
-	n := n0 + n1 + n2 + n3 + n4 // .30
-	return uint16(n/1213) + 0x8000
+	n := n0 + n1 + n2 + n3 + n4  // .30
+	n = ((n >> 8) * 13832) >> 16 // fix scale
+	return uint16(n) + 0x8000
 }
