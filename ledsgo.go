@@ -230,6 +230,11 @@ func scale8_video(i, scale uint8) uint8 {
 	return uint8(result)
 }
 
+// Blend the top value into the bottom value, with the given alpha value.
+func blend(bottom, top, topAlpha uint8) uint8 {
+	return uint8((int(bottom)*(256-int(topAlpha)) + int(top)*int(topAlpha)) >> 8)
+}
+
 // ApplyAlpha scales the color with the given alpha. It can be used to reduce
 // the intensity of a given color. The color is assumed to be linear, not sRGB.
 func ApplyAlpha(c color.RGBA, alpha uint8) color.RGBA {

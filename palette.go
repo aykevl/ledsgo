@@ -19,19 +19,19 @@ func (p *Palette16) ColorAt(position uint16) color.RGBA {
 	index := position >> 12
 	blendPosition := uint8(position >> 4)
 
-	bottom := p[index]
+	bottom := &p[index]
 
-	var top color.RGBA
+	var top *color.RGBA
 	if index >= 15 {
-		top = p[0]
+		top = &p[0]
 	} else {
-		top = p[index+1]
+		top = &p[index+1]
 	}
 
 	return color.RGBA{
-		R: scale8(bottom.R, 255-blendPosition) + scale8(top.R, blendPosition),
-		G: scale8(bottom.G, 255-blendPosition) + scale8(top.G, blendPosition),
-		B: scale8(bottom.B, 255-blendPosition) + scale8(top.B, blendPosition),
+		R: blend(bottom.R, top.R, blendPosition),
+		G: blend(bottom.G, top.G, blendPosition),
+		B: blend(bottom.B, top.B, blendPosition),
 		A: 0xff,
 	}
 }
