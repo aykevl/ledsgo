@@ -232,7 +232,9 @@ func scale8_video(i, scale uint8) uint8 {
 
 // Blend the top value into the bottom value, with the given alpha value.
 func blend(bottom, top, topAlpha uint8) uint8 {
-	return uint8((int(bottom)*(256-int(topAlpha)) + int(top)*int(topAlpha)) >> 8)
+	bottomPart := int(bottom) * (255 - int(topAlpha))
+	topPart := int(top) * int(topAlpha)
+	return uint8((bottomPart + topPart + 255) / 256)
 }
 
 // ApplyAlpha scales the color with the given alpha. It can be used to reduce
@@ -251,9 +253,9 @@ func ApplyAlpha(c color.RGBA, alpha uint8) color.RGBA {
 // two colors together.
 func Blend(bottom, top color.RGBA) color.RGBA {
 	return color.RGBA{
-		R: uint8((uint32(bottom.R)*uint32(255-top.A))/255 + uint32(top.R)),
-		G: uint8((uint32(bottom.G)*uint32(255-top.A))/255 + uint32(top.G)),
-		B: uint8((uint32(bottom.B)*uint32(255-top.A))/255 + uint32(top.B)),
+		R: blend(bottom.R, top.R, top.A),
+		G: blend(bottom.G, top.G, top.A),
+		B: blend(bottom.B, top.B, top.A),
 		A: 255,
 	}
 }
