@@ -4,6 +4,10 @@ import (
 	"image/color"
 )
 
+// True if the target architecture has pointers that are 16 bits or smaller.
+// This is mainly used to detect AVR.
+const is16bit = ^uintptr(0)>>16 == 0
+
 // Color encodes a HSV color.
 //
 // The hue is 16-bits to get better looking colors, as HSV→RGB conversions
@@ -232,6 +236,13 @@ func scale8_video(i, scale uint8) uint8 {
 
 // Blend the top value into the bottom value, with the given alpha value.
 func blend(bottom, top, topAlpha uint8) uint8 {
+	if is16bit {
+		// Version optimized for AVR.
+		bottomPart := uint16(bottom) * uint16(255-topAlpha)
+		topPart := uint16(top) * uint16(topAlpha)
+		return uint8((bottomPart + topPart + 255) / 256)
+	}
+	// Version optimized for 32-bit and higher.
 	bottomPart := int(bottom) * (255 - int(topAlpha))
 	topPart := int(top) * int(topAlpha)
 	return uint8((bottomPart + topPart + 255) / 256)
