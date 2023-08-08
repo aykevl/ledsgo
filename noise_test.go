@@ -55,6 +55,75 @@ func TestNoise1(t *testing.T) {
 	}
 }
 
+func TestFastNoise1(t *testing.T) {
+	numTests := int64(1 << 16)
+	rangemax := 0.0
+	rangemin := 0.0
+	rangesum := 0.0
+	diffsum := 0.0
+	diffmax := 0.0
+	diffmin := 0.0
+	const maxdiff = 0.0018
+	diffMaxTooHigh := 0
+	diffMinTooLow := 0
+	for x := int64(0); x <= numTests; x++ {
+		n1 := simplexnoise.Noise1(float64(x) / 0x100)
+		n2 := float64(int16(Noise1AVR(uint16(x))-0x8000)) / 0x8000
+		rangesum += n2
+		if n2 > rangemax {
+			rangemax = n2
+		}
+		if n2 < rangemin {
+			rangemin = n2
+		}
+		diff := n1 - n2
+		diffsum += math.Abs(diff)
+		if diff > maxdiff {
+			diffMaxTooHigh++
+		}
+		if diff < -maxdiff {
+			diffMinTooLow++
+		}
+		if diff > diffmax {
+			diffmax = diff
+		}
+		if diff < diffmin {
+			diffmin = diff
+		}
+	}
+	rangeavg := rangesum / float64(numTests)
+	diffavg := diffsum / float64(numTests)
+	// Note: the average output is off by ~0.03, which is expected and similar
+	// to the floating point implementation.
+	if diffavg >= 0.0004 {
+		t.Errorf("diffavg between float and fixed-point is too big: %f", diffavg)
+	}
+	if diffmax > maxdiff {
+		t.Errorf("diffmax is too high: %f (%d times, %.1f%%)", diffmax, diffMaxTooHigh, float64(diffMaxTooHigh)/float64(numTests)*100)
+	}
+	if diffmin < -maxdiff {
+		t.Errorf("diffmin is too low: %f (%d times, %.1f%%)", diffmin, diffMinTooLow, float64(diffMinTooLow)/float64(numTests)*100)
+	}
+	t.Logf("number of tests: %d", numTests)
+	t.Logf("range: avg %+2.6f max %+2.6f min %+2.6f", rangeavg, rangemax, rangemin)
+	t.Logf("diff:  avg %+2.6f max %+2.6f min %+2.6f", diffavg, diffmax, diffmin)
+}
+
+func TestMul(t *testing.T) {
+	t.Parallel()
+
+	for x := uint64(0); x <= 0xffff; x++ {
+		for y := uint64(0); y <= 0xffff; y++ {
+			result1 := (x * y) >> 16
+			result2 := uint64(mul16AVR(uint16(x), uint16(y)))
+			diff := result1 - result2
+			if uint64(diff) > 2 {
+				t.Errorf("invalid: %d * %d = %d, got %d (diff %d)", x, y, result1, result2, diff)
+			}
+		}
+	}
+}
+
 func TestNoise2(t *testing.T) {
 	r := rand.NewSource(0)
 	numTestsSub := 4000 // ~2s

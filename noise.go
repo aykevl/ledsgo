@@ -96,6 +96,16 @@ func grad1(hash uint8, x int32) int32 {
 	return grad * x // Multiply the gradient with the distance (integer * 0.12 = *.12)
 }
 
+// Same as grad1, but doesn't multiply with the x parameter.
+func grad1AVR(hash uint8) int16 {
+	h := hash & 15
+	grad := int16(1 + h&7) // Gradient value 1.0, 2.0, ..., 8.0
+	if h&8 != 0 {
+		grad = -grad // Set a random sign for the gradient
+	}
+	return grad
+}
+
 func grad2(hash uint8, x, y int32) int32 {
 	h := hash & 7       // Convert low 3 bits of hash code
 	u := q(h < 4, x, y) // into 8 simple gradient directions,
@@ -116,6 +126,24 @@ func grad4(hash uint8, x, y, z, t int32) int32 {
 	v := q(h < 16, y, z)
 	w := q(h < 8, z, t)
 	return q(h&1 != 0, -u, u) + q(h&2 != 0, -v, v) + q(h&4 != 0, -w, w)
+}
+
+// Fast multiplication that works on 16-bit integers. The result is
+// approximately the following:
+//
+//	uint16((uint32(x) * uint32(y)) >> 16)
+//
+// TODO: LLVM (as of version 15) produces rather terrible code for this
+// multiplication: it results in about 35 AVR instructions. It could be much
+// more efficient if it wasn't moving all these registers around all the time.
+// It's still a lot better than doing a 32-bit multiplication and only slightly
+// less precise.
+func mul16AVR(x, y uint16) uint16 {
+	result := uint16(0)
+	result += (x >> 8) * (y >> 8)
+	result += (x & 0xff) * (y >> 8) >> 8
+	result += (x >> 8) * (y & 0xff) >> 8
+	return result
 }
 
 // 1D simplex noise.
@@ -143,6 +171,36 @@ func Noise1(x uint32) uint16 {
 	n += 2503             // .15: fix offset, adjust to +0.03
 	n = (n * 26694) >> 16 // .15: fix scale to fit in [-1,1]
 	return uint16(n + 0x8000)
+}
+
+// Fast 1D simplex noise for 8-bit microcontrollers (may or may not be faster on
+// 32-bit microcontrollers). It is less precise than Noise1.
+//
+// The x input is a 8.8 fixed-point value. The result covers the full range of a
+// uint16, averaging around 32768. The output is only slightly more precise than
+// a uint8, though.
+func Noise1AVR(x uint16) uint16 {
+	i0 := x >> 8
+	i1 := i0 + 1
+	x0 := x & 0xff   // .8
+	x1 := 0x100 - x0 // .8
+
+	t0 := 0x4000 - mul16AVR(x0<<7, x0<<7)
+	t0 = mul16AVR(t0*2, t0*2)
+	t0 = mul16AVR(t0*2, t0*2)
+	n0 := int16(mul16AVR(t0, x0<<7))
+	n0 *= grad1AVR(perm[i0&0xff]) // multiply by value -8..8
+
+	t1 := 0x4000 - mul16AVR(x1<<7, x1<<7)
+	t1 = mul16AVR(t1*2, t1*2)
+	t1 = mul16AVR(t1*2, t1*2)
+	n1 := int16(mul16AVR(t1, x1<<7))
+	n1 *= -(grad1AVR(perm[i1&0xff])) // multiply by value -8..8
+
+	n := uint16(n0 + n1)
+	n += 0x8000 - 12032         // change range to start at 0
+	n = mul16AVR(n, 53409) << 1 // adjust range to end very close to 0xffff
+	return n
 }
 
 // 2D simplex noise.
