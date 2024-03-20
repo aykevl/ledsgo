@@ -31,6 +31,9 @@ package ledsgo
 //
 //     nf := float64(n) / (1 << 12)
 
+// #include "assembly.h"
+import "C"
+
 // Permutation table. This is just a random jumble of all numbers.
 // This needs to be exactly the same for all instances on all platforms,
 // so it's easiest to just keep it as static explicit data.
@@ -132,18 +135,8 @@ func grad4(hash uint8, x, y, z, t int32) int32 {
 // approximately the following:
 //
 //	uint16((uint32(x) * uint32(y)) >> 16)
-//
-// TODO: LLVM (as of version 15) produces rather terrible code for this
-// multiplication: it results in about 35 AVR instructions. It could be much
-// more efficient if it wasn't moving all these registers around all the time.
-// It's still a lot better than doing a 32-bit multiplication and only slightly
-// less precise.
 func mul16AVR(x, y uint16) uint16 {
-	result := uint16(0)
-	result += (x >> 8) * (y >> 8)
-	result += (x & 0xff) * (y >> 8) >> 8
-	result += (x >> 8) * (y & 0xff) >> 8
-	return result
+	return uint16(C.ledsgo_mul16(C.uint16_t(x), C.uint16_t(y)))
 }
 
 // 1D simplex noise.
